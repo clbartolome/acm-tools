@@ -21,20 +21,20 @@ spec:
         mergeKeys:
           - name
         generators:
+          - git:
+              repoURL: https://github.com/clbartolome/acm-tools
+              revision: master
+              files:
+                - path: demo-app-gitops/cluster-config/*.json
           - clusterDecisionResource:
               configMapRef: acm-placement
               labelSelector:
                 matchLabels:
                   cluster.open-cluster-management.io/placement: workloads-placement
               requeueAfterSeconds: 180
-          - git:
-              repoURL: https://github.com/clbartolome/acm-tools
-              revision: master
-              files:
-                - path: demo-app-gitops/cluster-config/*.json
   template:
     metadata:
-      name: 'demo-app-{{ .name }}'
+      name: demo-app-{{ .name }}
     spec:
       project: default
       sources:
@@ -44,23 +44,9 @@ spec:
           helm:
             valueFiles:
               - $gitops-repo/demo-app-gitops/{{ .name }}/values.yaml
-              
         - repoURL: 'https://github.com/clbartolome/acm-tools'
           targetRevision: 'master'
           ref: gitops-repo
-
       destination:
         server: '{{ .server }}'
         namespace: '{{ .namespace | default "demo-app" }}'
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-
-
-    spec:
-      project: default
-      sources:
-        - repoURL: https://github.com/clbartolome/acm-tools
-          targetRevision: master
-          path: test-app
