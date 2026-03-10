@@ -13,7 +13,7 @@ basic-config:
   config:
     enabled: true
     data:
-      APP_ENVIRONMENT: "OpenShift (demo-helm)"
+      APP_ENVIRONMENT: "OpenShift (cluster a)"
       APP_NAME: "Demo App using Helm and Argo"
       APP_VERSION: "1.0"
 

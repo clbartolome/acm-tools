@@ -1,0 +1,47 @@
+---
+# Destination Namespace - cluster a
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-test
+---
+# ACM appset in hub -----------------------------------------------
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app-push
+  namespace: openshift-gitops
+spec:
+  generators:
+    - clusterDecisionResource:
+        configMapRef: acm-placement
+        labelSelector:
+          matchLabels:
+            cluster.open-cluster-management.io/placement: app-push-placement
+        requeueAfterSeconds: 180
+  template:
+    metadata:
+      name: app-push-{{name}}
+      labels:
+        velero.io/exclude-from-backup: "true"
+    spec:
+      project: default
+      sources:
+        - repositoryType: git
+          repoURL: https://github.com/clbartolome/acm-tools
+          targetRevision: master
+          path: test-app
+      destination:
+        namespace: app-test
+        server: "{{server}}"
+      syncPolicy: {}
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: app-push-placement
+  namespace: openshift-gitops
+spec:
+  clusterSets:
+    - workloads

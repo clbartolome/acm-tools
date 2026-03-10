@@ -1,0 +1,58 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: workloads-placement
+  namespace: openshift-gitops
+spec:
+  clusterSets:
+    - workloads
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: demo-app
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=default"]
+  generators:
+    - merge:
+        mergeKeys:
+          - name
+        generators:
+          - clusterDecisionResource:
+              configMapRef: acm-placement
+              labelSelector:
+                matchLabels:
+                  cluster.open-cluster-management.io/placement: workloads-placement
+              requeueAfterSeconds: 180
+          - git:
+              repoURL: https://github.com/clbartolome/acm-tools
+              revision: master
+              files:
+                - path: demo-app/cluster-config/*.json
+  template:
+    metadata:
+      name: demo-app-{{ .name }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: '{{ .chart.repo }}'
+          chart: '{{ .chart.name }}'
+          targetRevision: '{{ .chart.version | default "0.0.1" }}'
+          helm:
+            valueFiles:
+              - $gitops-repo/demo-app-gitops/{{ .name }}/values.yaml
+              
+        - repoURL: 'https://github.com/clbartolome/acm-tools'
+          targetRevision: 'master'
+          ref: gitops-repo
+
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ .namespace | default "demo-app" }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

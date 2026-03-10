@@ -1,0 +1,59 @@
+---
+# Destination Namespace - cluster a
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-test
+---
+# ACM appset in hub -----------------------------------------------
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app-pull
+  namespace: openshift-gitops
+spec:
+  generators:
+    - clusterDecisionResource:
+        configMapRef: acm-placement
+        labelSelector:
+          matchLabels:
+            cluster.open-cluster-management.io/placement: test-placement
+        requeueAfterSeconds: 180
+  template:
+    metadata:
+      name: test-{{name}}
+      annotations:
+        apps.open-cluster-management.io/ocm-managed-cluster: "{{name}}"
+        apps.open-cluster-management.io/ocm-managed-cluster-app-namespace: openshift-gitops
+        argocd.argoproj.io/skip-reconcile: "true"
+      labels:
+        velero.io/exclude-from-backup: "true"
+        apps.open-cluster-management.io/pull-to-ocm-managed-cluster: "true"
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/clbartolome/acm-tools
+          targetRevision: master
+          path: test-app
+      destination:
+        namespace: app-test
+        server: "{{server}}"
+      syncPolicy: {}
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: test-placement
+  namespace: openshift-gitops
+spec:
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchExpressions:
+            - key: name
+              operator: In
+              values:
+                - a-cluster
+  clusterSets:
+    - workloads # ojo al binding de openshiftgitops en el cluserset

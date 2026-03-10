@@ -4,7 +4,7 @@ basic-config:
 
   image: quay.io/calopezb/argo-demo-app:1.0
 
-  replicas: 3
+  replicas: 1
 
   port: 8080
 
@@ -13,7 +13,7 @@ basic-config:
   config:
     enabled: true
     data:
-      APP_ENVIRONMENT: "OpenShift (demo-helm)"
+      APP_ENVIRONMENT: "OpenShift (cluster b)"
       APP_NAME: "Demo App using Helm and Argo"
       APP_VERSION: "1.0"
 
