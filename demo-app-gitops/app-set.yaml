@@ -15,7 +15,7 @@ metadata:
   namespace: openshift-gitops
 spec:
   goTemplate: true
-  goTemplateOptions: ["missingkey=default"]
+  goTemplateOptions: ["missingkey=error"]
   generators:
     - merge:
         mergeKeys:
@@ -31,10 +31,10 @@ spec:
               repoURL: https://github.com/clbartolome/acm-tools
               revision: master
               files:
-                - path: demo-app/cluster-config/*.json
+                - path: demo-app-gitops/cluster-config/*.json
   template:
     metadata:
-      name: demo-app-{{ .name }}'
+      name: 'demo-app-{{ .name }}'
     spec:
       project: default
       sources:
@@ -56,3 +56,11 @@ spec:
         automated:
           prune: true
           selfHeal: true
+
+
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/clbartolome/acm-tools
+          targetRevision: master
+          path: test-app

@@ -1,5 +1,6 @@
 {
   "name": "b-cluster",
+  "clusterName": "b-cluster",
   "namespace": "demo-app-b",
 
   "chart": {
