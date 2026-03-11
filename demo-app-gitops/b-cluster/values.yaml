@@ -2,7 +2,7 @@ name: demo-app
 
 image: quay.io/calopezb/argo-demo-app:1.0
 
-replicas: 3
+replicas: 1
 
 port: 8080
 
