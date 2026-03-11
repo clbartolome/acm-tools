@@ -36,6 +36,7 @@ spec:
   clusterSets:
     - workloads
 # oc create clusterrolebinding poc-acm-view --clusterrole=view --group=acm-poc-users
+# argocd -> spec.resourceTrackingMethod: annotation+label
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
