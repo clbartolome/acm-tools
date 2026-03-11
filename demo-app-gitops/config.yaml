@@ -1,4 +1,32 @@
 ---
+apiVersion: user.openshift.io/v1
+kind: Group
+metadata:
+  name: acm-poc-users
+users:
+  - poc-user
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: acm-poc
+  namespace: openshift-gitops
+spec:
+  description: ACM PoC
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: demo-app-*
+      server: '*'
+  roles:
+    - name: syncer
+      description: Puede ver y sincronizar apps del proyecto
+      policies:
+        - p, proj:acm-poc:syncer, applications, get, acm-poc/*, allow
+        - p, proj:acm-poc:syncer, applications, sync, acm-poc/*, allow
+      groups:
+        - acm-poc-users
+---
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
@@ -7,6 +35,7 @@ metadata:
 spec:
   clusterSets:
     - workloads
+# oc create clusterrolebinding poc-acm-view --clusterrole=view --group=acm-poc-users
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -36,17 +65,17 @@ spec:
     metadata:
       name: demo-app-{{ .name }}
     spec:
-      project: default
+      project: acm-poc
       sources:
+        - repoURL: 'https://github.com/clbartolome/acm-tools'
+          targetRevision: 'master'
+          ref: gitops-repo
         - repoURL: '{{ .chart.repo }}'
           chart: '{{ .chart.name }}'
           targetRevision: '{{ .chart.version | default "0.0.1" }}'
           helm:
             valueFiles:
               - $gitops-repo/demo-app-gitops/{{ .name }}/values.yaml
-        - repoURL: 'https://github.com/clbartolome/acm-tools'
-          targetRevision: 'master'
-          ref: gitops-repo
       destination:
         server: '{{ .server }}'
         namespace: '{{ .namespace | default "demo-app" }}'
