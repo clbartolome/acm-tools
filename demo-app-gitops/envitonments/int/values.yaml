@@ -1,0 +1,23 @@
+basic-config:
+
+  name: demo-app
+
+  image: quay.io/calopezb/argo-demo-app:1.0
+
+  replicas: 1
+
+  port: 8080
+
+  routeEnabled: true
+
+  config:
+    enabled: true
+    data:
+      APP_ENVIRONMENT: "OpenShift (INT)"
+      APP_NAME: "Demo App using Helm and Argo"
+      APP_VERSION: "1.0"
+
+  secret:
+    enabled: true
+    data:
+      APP_SECRET: "super secret value from helm in argo"

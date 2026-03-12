@@ -1,4 +1,6 @@
 ---
+demo-int
+---
 apiVersion: user.openshift.io/v1
 kind: Group
 metadata:
@@ -38,45 +40,3 @@ spec:
 # oc create clusterrolebinding poc-acm-view --clusterrole=view --group=acm-poc-users
 # argocd -> spec.resourceTrackingMethod: annotation+label
 ---
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
-  name: demo-app
-  namespace: openshift-gitops
-spec:
-  goTemplate: true
-  goTemplateOptions: ["missingkey=error"]
-  generators:
-    - merge:
-        mergeKeys:
-          - name
-        generators:
-          - git:
-              repoURL: https://github.com/clbartolome/acm-tools
-              revision: master
-              files:
-                - path: demo-app-gitops/cluster-config/*.json
-          - clusterDecisionResource:
-              configMapRef: acm-placement
-              labelSelector:
-                matchLabels:
-                  cluster.open-cluster-management.io/placement: workloads-placement
-              requeueAfterSeconds: 180
-  template:
-    metadata:
-      name: demo-app-{{ .name }}
-    spec:
-      project: acm-poc
-      sources:
-        - repoURL: 'https://github.com/clbartolome/acm-tools'
-          targetRevision: 'master'
-          ref: gitops-repo
-        - repoURL: '{{ .chart.repo }}'
-          chart: '{{ .chart.name }}'
-          targetRevision: '{{ .chart.version | default "0.0.1" }}'
-          helm:
-            valueFiles:
-              - $gitops-repo/demo-app-gitops/{{ .name }}/values.yaml
-      destination:
-        server: '{{ .server }}'
-        namespace: '{{ .namespace | default "demo-app" }}'
