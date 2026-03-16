@@ -1,6 +1,4 @@
 ---
-demo-int
----
 apiVersion: user.openshift.io/v1
 kind: Group
 metadata:
@@ -28,6 +26,11 @@ spec:
         - p, proj:acm-poc:syncer, applications, sync, acm-poc/*, allow
       groups:
         - acm-poc-users
+    - name: jenkins-syncer
+      description: Jenkins puede ver y sincronizar apps del proyecto
+      policies:
+      - p, proj:acm-poc:jenkins-syncer, applications, get, acm-poc/*, allow
+      - p, proj:acm-poc:jenkins-syncer, applications, sync, acm-poc/*, allow
 ---
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
@@ -37,6 +40,12 @@ metadata:
 spec:
   clusterSets:
     - workloads
-# oc create clusterrolebinding poc-acm-view --clusterrole=view --group=acm-poc-users
-# argocd -> spec.resourceTrackingMethod: annotation+label
 ---
+
+# TEST:
+export ARGOCD_SERVER=$(oc get route openshift-gitops-server -n openshift-gitops -o jsonpath='{.spec.host}')
+export ARGOCD_AUTH_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhcmdvY2QiLCJzdWIiOiJwcm9qOmFjbS1wb2M6amVua2lucy1zeW5jZXIiLCJuYmYiOjE3NzM2OTk4MTMsImlhdCI6MTc3MzY5OTgxMywianRpIjoiamVua2lucy1zYSJ9.lbukkFPyB-V1H0fhoD3xiQ06njUCNuk5syx65v71KO8"
+
+argocd app list --project acm-poc --server "$ARGOCD_SERVER" --grpc-web --insecure
+argocd app get demo-app-a-cluster-int --server "$ARGOCD_SERVER" --grpc-web --insecure
+argocd app sync demo-app-a-cluster-int  --project acm-poc --server "$ARGOCD_SERVER" --grpc-web --insecure
