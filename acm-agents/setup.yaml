@@ -1,0 +1,76 @@
+---
+# Crea un cluster set primero - gitops-managed (añades los clusters agentes)
+# ! OJO pon tambien el binding al namespace openshift-gitops
+# https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/2.15/html/gitops/gitops-overview#enable-gitops-addon-with-argocd
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: gitops-managed
+  namespace: openshift-gitops
+spec:
+  clusterSets:
+    - gitops-managed
+---
+apiVersion: apps.open-cluster-management.io/v1beta1
+kind: GitOpsCluster
+metadata:
+  name: gitops-agent-clusters
+  namespace: openshift-gitops
+spec:
+  argoServer:
+    argoNamespace: openshift-gitops
+  placementRef:
+    kind: Placement
+    apiVersion: cluster.open-cluster-management.io/v1beta1
+    name: gitops-managed
+    namespace: openshift-gitops
+  gitopsAddon:
+    enabled: true
+    overrideExistingConfigs: true
+    argoCDAgent:
+      enabled: true
+      serverAddress: openshift-gitops-agent-principal-openshift-gitops.apps.hub.calopezb.com
+      serverPort: "443"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: demo-app
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  generators:
+    - matrix:
+        generators:
+          # Lista de clusters obtenida por ACM
+          - clusterDecisionResource:
+              configMapRef: acm-placement
+              labelSelector:
+                matchLabels:
+                  cluster.open-cluster-management.io/placement: workloads-placement
+              requeueAfterSeconds: 180
+          # Lista de entornos
+          - list:
+              elements:
+                - env: int 
+                  namespace: demo-app-int
+                - env: pre 
+                  namespace: demo-app-pre
+  template:
+    metadata:
+      name: demo-app-{{ .name }}-{{ .env }}
+      namespace: '{{ .name }}'
+    spec:
+      project: acm-poc
+      sources:
+        - repoURL: https://github.com/clbartolome/acm-tools
+          targetRevision: master
+          path: demo-app-gitops/environments/{{ .env }}
+      destination:
+        server: 'https://openshift-gitops-agent-principal-openshift-gitops.apps.hub.calopezb.com?agentName={{ .name }}'
+        namespace: '{{ .namespace }}'
+      syncPolicy:
+        automated: {}
+        syncOptions:
+          - CreateNamespace=true
+

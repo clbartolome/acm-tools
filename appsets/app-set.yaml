@@ -31,7 +31,7 @@ spec:
       sources:
         - repoURL: 'https://github.com/clbartolome/acm-tools'
           targetRevision: 'master'
-          path: demo-app-gitops/envitonments/{{ .env }}
+          path: demo-app-gitops/environments/{{ .env }}
       destination:
         server: '{{ .server }}'
         namespace: '{{ .namespace }}'

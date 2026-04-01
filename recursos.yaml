@@ -1,0 +1,84 @@
+# TODO EN EL CLUSTER HUB
+---
+# Grupo para los usuarios que van a entrar en ArgoCD
+apiVersion: user.openshift.io/v1
+kind: Group
+metadata:
+  name: acm-poc-users
+users:
+  - <TODO:USUARIO_1>
+  - <TODO:USUARIO_2>
+---
+# Proyecto en ARGOCD en el que crearemos las aplicaciones. Añadimos a los usuarios del grupo anterior para que solo puedan ver y sincronizar apps.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: acm-poc
+  namespace: openshift-gitops
+spec:
+  description: ACM PoC
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: '*'
+      server: '*'
+  roles:
+    - name: syncer
+      description: Puede ver y sincronizar apps del proyecto
+      policies:
+        - p, proj:acm-poc:syncer, applications, get, acm-poc/*, allow
+        - p, proj:acm-poc:syncer, applications, sync, acm-poc/*, allow
+      groups:
+        - acm-poc-users
+    - name: jenkins-syncer
+      description: Jenkins puede ver y sincronizar apps del proyecto
+      policies:
+      - p, proj:acm-poc:jenkins-syncer, applications, get, acm-poc/*, allow
+      - p, proj:acm-poc:jenkins-syncer, applications, sync, acm-poc/*, allow
+# IMPORTANTE: necesitamos el token del usuario jenkins-syncer. Para crearlo:
+# - Entrar en ArgoCD (hub)
+# - Usar login de Argo, no de openshift
+# - Usuario 'admin' y contraseña en el secreto que esta en el namespace openshift-gitops de nombre 'openshift-gitops-cluster'
+# - En Argo entrar a settings > Projects > acm-poc
+# - Roles > jenkins-syncer
+# - En la seccion 'JWT Tokens' crear un token 'jenkins-sa' (yo lo crearia sin expiracion)
+---
+# APPSET para crear las aplicaciones que vamos a probar en la PoC
+# Como tenemos 2 namespaces por cluster vamos a 'simular' que el namespace que acaba en aws es int y el de onprem es pre. Si creeis que es mejor que cambiemos los nombres se lo decimos.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: demo-app
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  generators:
+    - matrix:
+        generators:
+          - clusterDecisionResource:
+              configMapRef: acm-placement
+              labelSelector:
+                matchLabels:
+                  cluster.open-cluster-management.io/placement: <TODO:nombre-placement> # No recuerdo como lo llamamos
+              requeueAfterSeconds: 180
+          # Lista de entornos
+          - list:
+              elements:
+                - env: int 
+                  namespace:  poc-app-aws
+                - env: pre 
+                  namespace: poc-app-onprem
+  template:
+    metadata:
+      # appName-clusterName-env
+      name: demo-app-{{ .name }}-{{ .env }}
+    spec:
+      project: acm-poc
+      sources:
+        - repoURL: '<TODO:url-repo>'
+          targetRevision: '<TODO:rama>'
+          path: <TODO:path dentro del repo> # demo-app-gitops/environments/{{ .env }}
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ .namespace }}'
+
