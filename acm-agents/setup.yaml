@@ -2,6 +2,7 @@
 # Crea un cluster set primero - gitops-managed (añades los clusters agentes)
 # ! OJO pon tambien el binding al namespace openshift-gitops
 # https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/2.15/html/gitops/gitops-overview#enable-gitops-addon-with-argocd
+# recuerda habilitar el controller en argocd oc patch argocd openshift-gitops -n openshift-gitops --type merge -p 'spec:  controller:    enabled: true'
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
@@ -29,9 +30,11 @@ spec:
     overrideExistingConfigs: true
     argoCDAgent:
       enabled: true
+      propagateHubCA: false 
       serverAddress: openshift-gitops-agent-principal-openshift-gitops.apps.hub.calopezb.com
       serverPort: "443"
 ---
+# oc get secret -n openshift-gitops cluster-b-cluster -o jsonpath='{.data.name}' | base64 -d; echo --> ver las url de los servers
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -47,7 +50,7 @@ spec:
               configMapRef: acm-placement
               labelSelector:
                 matchLabels:
-                  cluster.open-cluster-management.io/placement: workloads-placement
+                  cluster.open-cluster-management.io/placement: gitops-managed
               requeueAfterSeconds: 180
           # Lista de entornos
           - list:
@@ -59,15 +62,17 @@ spec:
   template:
     metadata:
       name: demo-app-{{ .name }}-{{ .env }}
-      namespace: '{{ .name }}'
+      labels:
+        cluster: '{{ .name }}'
+        environment: '{{ .env }}'
     spec:
-      project: acm-poc
+      project: default
       sources:
         - repoURL: https://github.com/clbartolome/acm-tools
           targetRevision: master
           path: demo-app-gitops/environments/{{ .env }}
       destination:
-        server: 'https://openshift-gitops-agent-principal-openshift-gitops.apps.hub.calopezb.com?agentName={{ .name }}'
+        server: 'https://openshift-gitops-agent-principal-openshift-gitops.apps.hub.calopezb.com:443?agentName={{ .name }}'
         namespace: '{{ .namespace }}'
       syncPolicy:
         automated: {}

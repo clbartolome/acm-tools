@@ -13,15 +13,15 @@ spec:
               configMapRef: acm-placement
               labelSelector:
                 matchLabels:
-                  cluster.open-cluster-management.io/placement: workloads-placement
+                  cluster.open-cluster-management.io/placement: gitops-configure
               requeueAfterSeconds: 180
           # Lista de entornos
           - list:
               elements:
                 - env: int 
                   namespace: demo-app-int
-                - env: pre 
-                  namespace: demo-app-pre
+                # - env: pre 
+                #   namespace: demo-app-pre
   template:
     metadata:
       # appName-clusterName-env
@@ -31,7 +31,7 @@ spec:
       sources:
         - repoURL: 'https://github.com/clbartolome/acm-tools'
           targetRevision: 'master'
-          path: demo-app-gitops/environments/{{ .env }}
+          path: demo-app-gitops/environments/{{ .name }}/{{ .env }}
       destination:
         server: '{{ .server }}'
         namespace: '{{ .namespace }}'

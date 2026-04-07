@@ -1,10 +1,43 @@
 # TODO EN EL CLUSTER HUB
+# Previo:
+# - creado un cluster_set llamado poc-acm + binding a openshift gitops
+
+
+# - Creado un placement gitops-configure
+# apiVersion: cluster.open-cluster-management.io/v1beta1
+# kind: Placement
+# metadata:
+#   name: gitops-configure
+#   namespace: openshift-gitops
+# spec:
+#   predicates:
+#     - requiredClusterSelector:
+#         labelSelector:
+#           matchLabels:
+#             gitops: 'true'
+
+
+# - Creado un gitops-cluster
+# apiVersion: apps.open-cluster-management.io/v1beta1
+# kind: GitOpsCluster
+# metadata:
+#   name: openshift-gitops
+#   namespace: openshift-gitops
+# spec:
+#   argoServer:
+#     argoNamespace: openshift-gitops
+#   placementRef:
+#     apiVersion: cluster.open-cluster-management.io/v1beta1
+#     kind: Placement
+#     name: gitops-configure
+#     namespace: openshift-gitops
+
 ---
 # Grupo para los usuarios que van a entrar en ArgoCD
 apiVersion: user.openshift.io/v1
 kind: Group
 metadata:
-  name: acm-poc-users
+  name: poc-acm-users
 users:
   - <TODO:USUARIO_1>
   - <TODO:USUARIO_2>
@@ -13,10 +46,10 @@ users:
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: acm-poc
+  name: poc-acm
   namespace: openshift-gitops
 spec:
-  description: ACM PoC
+  description: PoC ACM
   sourceRepos:
     - '*'
   destinations:
@@ -26,29 +59,39 @@ spec:
     - name: syncer
       description: Puede ver y sincronizar apps del proyecto
       policies:
-        - p, proj:acm-poc:syncer, applications, get, acm-poc/*, allow
-        - p, proj:acm-poc:syncer, applications, sync, acm-poc/*, allow
+        - p, proj:poc-acm:syncer, applications, get, poc-acm/*, allow
+        - p, proj:poc-acm:syncer, applications, sync, poc-acm/*, allow
       groups:
-        - acm-poc-users
+        - poc-acm-users
     - name: jenkins-syncer
       description: Jenkins puede ver y sincronizar apps del proyecto
       policies:
-      - p, proj:acm-poc:jenkins-syncer, applications, get, acm-poc/*, allow
-      - p, proj:acm-poc:jenkins-syncer, applications, sync, acm-poc/*, allow
+      - p, proj:poc-acm:jenkins-syncer, applications, get, poc-acm/*, allow
+      - p, proj:poc-acm:jenkins-syncer, applications, sync, poc-acm/*, allow
 # IMPORTANTE: necesitamos el token del usuario jenkins-syncer. Para crearlo:
 # - Entrar en ArgoCD (hub)
 # - Usar login de Argo, no de openshift
 # - Usuario 'admin' y contraseña en el secreto que esta en el namespace openshift-gitops de nombre 'openshift-gitops-cluster'
-# - En Argo entrar a settings > Projects > acm-poc
+# - En Argo entrar a settings > Projects > poc-acm
 # - Roles > jenkins-syncer
 # - En la seccion 'JWT Tokens' crear un token 'jenkins-sa' (yo lo crearia sin expiracion)
 ---
 # APPSET para crear las aplicaciones que vamos a probar en la PoC
 # Como tenemos 2 namespaces por cluster vamos a 'simular' que el namespace que acaba en aws es int y el de onprem es pre. Si creeis que es mejor que cambiemos los nombres se lo decimos.
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: poc-apps-placement
+  namespace: openshift-gitops
+spec:
+  clusterSets:
+    - poc-acm
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: demo-app
+  name: ri-web
   namespace: openshift-gitops
 spec:
   goTemplate: true
@@ -59,21 +102,21 @@ spec:
               configMapRef: acm-placement
               labelSelector:
                 matchLabels:
-                  cluster.open-cluster-management.io/placement: <TODO:nombre-placement> # No recuerdo como lo llamamos
+                  cluster.open-cluster-management.io/placement: poc-apps-placement
               requeueAfterSeconds: 180
           # Lista de entornos
           - list:
               elements:
                 - env: int 
                   namespace:  poc-app-aws
-                - env: pre 
-                  namespace: poc-app-onprem
+                # - env: pre 
+                #   namespace: poc-app-onprem
   template:
     metadata:
       # appName-clusterName-env
       name: demo-app-{{ .name }}-{{ .env }}
     spec:
-      project: acm-poc
+      project: poc-acm
       sources:
         - repoURL: '<TODO:url-repo>'
           targetRevision: '<TODO:rama>'
